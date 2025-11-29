@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DJD 차트생성 도우미</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='5' ry='5' fill='%23DC2626'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='20' font-weight='bold' font-family='Arial, sans-serif'%3EDJD%3C/text%3E%3C/svg%3E">
+    <!-- (선택) CDN Tailwind는 데모용으로만 사용. 정식에선 Vite+PostCSS 설정 권장 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-primary': '#DC2626',
+              'brand-secondary': '#B91C1C',
+              'brand-accent': '#FFC107',
+              'brand-light': '#F0F7F7',
+              'brand-dark': '#1A202C',
+              'brand-google-blue': '#4285F4',
+            },
+          },
+        },
+      }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0"
+  }
+}
+</script>
+<!-- Google API Loader -->
+<script async defer src="https://apis.google.com/js/api.js"></script>
+<script async defer src="https://accounts.google.com/gsi/client"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-brand-dark text-brand-light">
+    <div id="root"></div>
+    <!-- Vite 엔트리 수정: /src/main.tsx -> /index.tsx -->
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

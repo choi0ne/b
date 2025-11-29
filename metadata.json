@@ -1,0 +1,7 @@
+{
+  "name": "djd_soap_rece00",
+  "description": "대화를 녹음, 전사하고 AI를 사용하여 SOAP 차트를 자동으로 생성하는 실시간 진료 기록 애플리케이션입니다. 텍스트 복사 및 저장 기능을 포함합니다.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
