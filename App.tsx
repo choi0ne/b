@@ -391,7 +391,7 @@ const TasksModal = ({ isOpen, onClose, isSignedIn, isApiLoading, apiError, onAut
                                     <input type="checkbox" checked={task.status === 'completed'} onChange={(e) => handleUpdateTaskStatus(task, e.target.checked)} className="form-checkbox h-5 w-5 text-blue-500 rounded focus:ring-blue-500 bg-gray-800 border-gray-600" />
                                     <div className="flex-grow">
                                         {editingTask?.id === task.id ? (
-                                            <input type="text" value={editingTask.title} onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
+                                            <input type="text" value={editingTask.title} onChange={(e) => setEditingTask({ id: editingTask.id, title: e.target.value })} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
                                         ) : (
                                             <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.title}</p>
                                         )}
@@ -1272,12 +1272,12 @@ const App: React.FC = () => {
             </div>
 
             {/* Additional Notes Panel */}
-            <div 
+            <div
               className={`bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col flex-1 relative transition-all duration-300 ${isDraggingOver ? 'border-2 border-dashed border-brand-primary ring-4 ring-brand-primary/20' : 'border-2 border-transparent'}`}
               onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
               onDragEnter={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-              onDragLeave={(e) => { setIsDraggingOver(false); }}
+              onDragLeave={() => { setIsDraggingOver(false); }}
             >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-white">추가 입력</h2>
