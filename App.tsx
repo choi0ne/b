@@ -1,11 +1,11 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeWithGemini, generateSoapChart, verifyAndCorrectTranscript } from './services/geminiService.ts';
-import { 
-    MicrophoneIcon, 
-    StopIcon, 
-    CopyIcon, 
-    SaveIcon, 
+import {
+    MicrophoneIcon,
+    StopIcon,
+    CopyIcon,
+    SaveIcon,
     Spinner,
     SettingsIcon,
     GeminiIcon,
@@ -20,7 +20,8 @@ import {
     PlusIcon,
     NotionIcon,
     RevisitIcon,
-    GoogleSheetsIcon
+    GoogleSheetsIcon,
+    DoctalkIcon
 } from './components/icons.tsx';
 
 // TypeScript type definitions for Google API objects
@@ -390,7 +391,7 @@ const TasksModal = ({ isOpen, onClose, isSignedIn, isApiLoading, apiError, onAut
                                     <input type="checkbox" checked={task.status === 'completed'} onChange={(e) => handleUpdateTaskStatus(task, e.target.checked)} className="form-checkbox h-5 w-5 text-blue-500 rounded focus:ring-blue-500 bg-gray-800 border-gray-600" />
                                     <div className="flex-grow">
                                         {editingTask?.id === task.id ? (
-                                            <input type="text" value={editingTask.title} onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
+                                            <input type="text" value={editingTask!.title} onChange={(e) => setEditingTask({ id: editingTask!.id, title: e.target.value })} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
                                         ) : (
                                             <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.title}</p>
                                         )}
@@ -1122,6 +1123,15 @@ const App: React.FC = () => {
                 <span>Re-visit</span>
             </button>
             <button
+                onClick={() => window.open('https://reservation.docfriends.com/?stateTypes=&reservationDate=dateTime&gte=2025-12-03&lte=2025-12-09&platformTypes=&productUuids=&bookingName=bookerName&bookingNameText=&reservationUuid', '_blank', 'noopener,noreferrer')}
+                className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
+                aria-label="닥톡예약 열기"
+                title="닥톡예약 열기"
+            >
+                <DoctalkIcon className="w-4 h-4" />
+                <span>닥톡예약</span>
+            </button>
+            <button
                 onClick={() => window.open('https://www.notion.so/2b524d09893681e6b507ea7422cbe9ac?v=2b524d09893681ad9a41000cc76ed3f6', '_blank', 'noopener,noreferrer')}
                 className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
                 aria-label="Notion 위키 열기"
@@ -1262,12 +1272,12 @@ const App: React.FC = () => {
             </div>
 
             {/* Additional Notes Panel */}
-            <div 
+            <div
               className={`bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col flex-1 relative transition-all duration-300 ${isDraggingOver ? 'border-2 border-dashed border-brand-primary ring-4 ring-brand-primary/20' : 'border-2 border-transparent'}`}
               onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
               onDragEnter={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-              onDragLeave={(e) => { setIsDraggingOver(false); }}
+              onDragLeave={() => { setIsDraggingOver(false); }}
             >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-white">추가 입력</h2>
