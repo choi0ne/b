@@ -1,11 +1,11 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeWithGemini, generateSoapChart, verifyAndCorrectTranscript } from './services/geminiService.ts';
-import { 
-    MicrophoneIcon, 
-    StopIcon, 
-    CopyIcon, 
-    SaveIcon, 
+import {
+    MicrophoneIcon,
+    StopIcon,
+    CopyIcon,
+    SaveIcon,
     Spinner,
     SettingsIcon,
     GeminiIcon,
@@ -20,7 +20,8 @@ import {
     PlusIcon,
     NotionIcon,
     RevisitIcon,
-    GoogleSheetsIcon
+    GoogleSheetsIcon,
+    DoctalkIcon
 } from './components/icons.tsx';
 
 // TypeScript type definitions for Google API objects
@@ -1120,6 +1121,15 @@ const App: React.FC = () => {
             >
                 <RevisitIcon className="w-4 h-4" />
                 <span>Re-visit</span>
+            </button>
+            <button
+                onClick={() => window.open('https://reservation.docfriends.com/?stateTypes=&reservationDate=dateTime&gte=2025-12-03&lte=2025-12-09&platformTypes=&productUuids=&bookingName=bookerName&bookingNameText=&reservationUuid', '_blank', 'noopener,noreferrer')}
+                className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
+                aria-label="닥톡예약 열기"
+                title="닥톡예약 열기"
+            >
+                <DoctalkIcon className="w-4 h-4" />
+                <span>닥톡예약</span>
             </button>
             <button
                 onClick={() => window.open('https://www.notion.so/2b524d09893681e6b507ea7422cbe9ac?v=2b524d09893681ad9a41000cc76ed3f6', '_blank', 'noopener,noreferrer')}

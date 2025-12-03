@@ -154,3 +154,17 @@ export const GoogleSheetsIcon: React.FC<{ className?: string }> = ({ className }
         <path fill="#FFFFFF" d="M22,25h4v9H22Zm-6,3h4v6H16Zm12-3h4v6H28Z"/>
     </svg>
 );
+
+export const DoctalkIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg
+      className={className}
+      viewBox="0 0 50 50"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width="50" height="50" rx="8" ry="8" fill="#00BFA5" />
+      <circle cx="17" cy="22" r="2.5" fill="white" />
+      <circle cx="33" cy="22" r="2.5" fill="white" />
+      <path d="M 15 32 Q 25 38 35 32" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round"/>
+      <rect x="20" y="10" width="10" height="6" rx="3" fill="white" />
+    </svg>
+);
