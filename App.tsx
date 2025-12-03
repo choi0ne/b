@@ -1086,6 +1086,15 @@ const App: React.FC = () => {
         <div className="flex-1 flex justify-start">
           <div className="flex flex-col space-y-2">
             <button
+                onClick={() => window.open('https://djd-diagnosisv2.netlify.app/', '_blank', 'noopener,noreferrer')}
+                className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
+                aria-label="DJD 진단 열기"
+                title="DJD 진단 열기"
+            >
+                <DjdLogoIcon className="w-4 h-4" />
+                <span>DJD 진단</span>
+            </button>
+            <button
                 onClick={() => setIsCalendarOpen(true)}
                 className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
                 aria-label="Google Calendar 일정 보기"
