@@ -391,7 +391,7 @@ const TasksModal = ({ isOpen, onClose, isSignedIn, isApiLoading, apiError, onAut
                                     <input type="checkbox" checked={task.status === 'completed'} onChange={(e) => handleUpdateTaskStatus(task, e.target.checked)} className="form-checkbox h-5 w-5 text-blue-500 rounded focus:ring-blue-500 bg-gray-800 border-gray-600" />
                                     <div className="flex-grow">
                                         {editingTask?.id === task.id ? (
-                                            <input type="text" value={editingTask!.title} onChange={(e) => setEditingTask({ id: editingTask!.id, title: e.target.value })} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
+                                            <input type="text" value={editingTask?.title || ''} onChange={(e) => setEditingTask(editingTask ? { ...editingTask, title: e.target.value } : null)} onBlur={handleUpdateTaskTitle} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTaskTitle()} className="w-full border-b-2 border-blue-500 focus:outline-none bg-transparent text-white" autoFocus/>
                                         ) : (
                                             <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.title}</p>
                                         )}
@@ -468,10 +468,16 @@ const App: React.FC = () => {
         window.gapi.client.setToken(tokenResponse);
         setIsGoogleSignedIn(true);
         localStorage.setItem('googleApiSignedIn', 'true');
+
+        // 토큰 만료 시간 저장 (현재 시간 + expires_in 초)
+        const expiresAt = Date.now() + (tokenResponse.expires_in || 3600) * 1000;
+        localStorage.setItem('googleTokenExpiresAt', expiresAt.toString());
+
         setGoogleApiError('');
     } else {
         setIsGoogleSignedIn(false);
         localStorage.removeItem('googleApiSignedIn');
+        localStorage.removeItem('googleTokenExpiresAt');
     }
     setIsGoogleApiLoading(false);
   }, []);
@@ -538,6 +544,40 @@ const App: React.FC = () => {
 
   }, [googleApiKey, googleClientId, handleAuthResult]);
 
+  // 토큰 자동 갱신 useEffect
+  useEffect(() => {
+    if (!isGoogleSignedIn || !tokenClientRef.current) return;
+
+    const checkAndRefreshToken = () => {
+      const expiresAtStr = localStorage.getItem('googleTokenExpiresAt');
+      if (!expiresAtStr) return;
+
+      const expiresAt = parseInt(expiresAtStr, 10);
+      const now = Date.now();
+      const timeUntilExpiry = expiresAt - now;
+
+      // 토큰이 5분 이내에 만료되면 갱신
+      const REFRESH_THRESHOLD = 5 * 60 * 1000; // 5분
+
+      if (timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0) {
+        console.log('토큰이 곧 만료됩니다. 자동 갱신을 시도합니다.');
+        tokenClientRef.current.requestAccessToken({ prompt: '' });
+      } else if (timeUntilExpiry <= 0) {
+        console.log('토큰이 만료되었습니다. 재인증이 필요합니다.');
+        // 자동으로 재인증 시도 (조용히)
+        tokenClientRef.current.requestAccessToken({ prompt: 'none' });
+      }
+    };
+
+    // 초기 체크
+    checkAndRefreshToken();
+
+    // 1분마다 토큰 상태 확인
+    const intervalId = setInterval(checkAndRefreshToken, 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isGoogleSignedIn]);
+
   const handleGoogleAuthClick = () => {
     if (tokenClientRef.current) {
         tokenClientRef.current.requestAccessToken({ prompt: '' });
@@ -552,6 +592,7 @@ const App: React.FC = () => {
     window.gapi.client.setToken(null);
     setIsGoogleSignedIn(false);
     localStorage.removeItem('googleApiSignedIn');
+    localStorage.removeItem('googleTokenExpiresAt');
     if (window.google?.accounts?.id) {
         window.google.accounts.id.disableAutoSelect();
     }
@@ -1086,6 +1127,15 @@ const App: React.FC = () => {
       <header className="w-full max-w-7xl flex justify-between items-start mb-6">
         <div className="flex-1 flex justify-start">
           <div className="flex flex-col space-y-2">
+            <button
+                onClick={() => window.open('https://djd-diagnosisv2.netlify.app/', '_blank', 'noopener,noreferrer')}
+                className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
+                aria-label="DJD 진단 열기"
+                title="DJD 진단 열기"
+            >
+                <DjdLogoIcon className="w-4 h-4" />
+                <span>DJD 진단</span>
+            </button>
             <button
                 onClick={() => setIsCalendarOpen(true)}
                 className="flex items-center justify-center gap-x-1.5 bg-gray-700 text-gray-200 text-sm font-semibold py-1.5 px-2 rounded-md hover:bg-gray-600 transition-colors border border-gray-600 shadow-sm"
