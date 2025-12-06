@@ -2,6 +2,15 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeWithGemini, generateSoapChart, verifyAndCorrectTranscript } from './services/geminiService.ts';
 import {
+    initiateOAuthFlow,
+    exchangeCodeForToken,
+    saveTokenData,
+    getStoredTokenData,
+    ensureValidToken,
+    logout as oauthLogout,
+    parseOAuthCallback
+} from './services/googleOAuthService.ts';
+import {
     MicrophoneIcon,
     StopIcon,
     CopyIcon,
@@ -28,8 +37,6 @@ import {
 declare global {
     interface Window {
         gapi: any;
-        google: any;
-        tokenClient: any;
     }
 }
 
@@ -449,7 +456,14 @@ const App: React.FC = () => {
   const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
   const [googleApiError, setGoogleApiError] = useState('');
   const [isGoogleApiLoading, setIsGoogleApiLoading] = useState(true);
-  const tokenClientRef = useRef<any>(null);
+
+  // OAuth 2.0 설정
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  const SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/drive.file'
+  ];
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -463,25 +477,40 @@ const App: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const handleAuthResult = useCallback((tokenResponse: any) => {
-    if (tokenResponse && tokenResponse.access_token) {
-        window.gapi.client.setToken(tokenResponse);
-        setIsGoogleSignedIn(true);
-        localStorage.setItem('googleApiSignedIn', 'true');
+  // OAuth callback 처리
+  const handleOAuthCallback = useCallback(async () => {
+    try {
+      const callbackData = parseOAuthCallback();
+      if (!callbackData) return;
 
-        // 토큰 만료 시간 저장 (현재 시간 + expires_in 초)
-        const expiresAt = Date.now() + (tokenResponse.expires_in || 3600) * 1000;
-        localStorage.setItem('googleTokenExpiresAt', expiresAt.toString());
+      const { code } = callbackData;
 
-        setGoogleApiError('');
-    } else {
-        setIsGoogleSignedIn(false);
-        localStorage.removeItem('googleApiSignedIn');
-        localStorage.removeItem('googleTokenExpiresAt');
+      // Authorization Code를 Access Token으로 교환
+      const tokenResponse = await exchangeCodeForToken(code, googleClientId, REDIRECT_URI);
+
+      // 토큰 저장
+      saveTokenData(tokenResponse);
+
+      // gapi 클라이언트에 토큰 설정
+      if (window.gapi?.client) {
+        window.gapi.client.setToken({ access_token: tokenResponse.access_token });
+      }
+
+      setIsGoogleSignedIn(true);
+      setGoogleApiError('');
+
+      // URL에서 OAuth 파라미터 제거
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      setGoogleApiError(error instanceof Error ? error.message : 'OAuth 인증 실패');
+      setIsGoogleSignedIn(false);
     }
-    setIsGoogleApiLoading(false);
-  }, []);
+  }, [googleClientId, REDIRECT_URI]);
 
+  // Google API 초기화 및 OAuth callback 처리
   useEffect(() => {
     if (!googleApiKey || !googleClientId) {
         setGoogleApiError('Google API 키와 클라이언트 ID를 설정에서 입력해주세요.');
@@ -493,6 +522,7 @@ const App: React.FC = () => {
         setIsGoogleApiLoading(true);
         setGoogleApiError('');
 
+        // gapi 라이브러리 로드 대기
         await new Promise<void>((resolve) => {
             const interval = setInterval(() => {
                 if (window.gapi) {
@@ -502,16 +532,8 @@ const App: React.FC = () => {
             }, 100);
         });
 
-        await new Promise<void>((resolve) => {
-            const interval = setInterval(() => {
-                if (window.google?.accounts?.oauth2) {
-                    clearInterval(interval);
-                    resolve();
-                }
-            }, 100);
-        });
-
         try {
+            // gapi 클라이언트 초기화
             await window.gapi.client.init({
                 apiKey: googleApiKey,
                 discoveryDocs: [
@@ -520,19 +542,35 @@ const App: React.FC = () => {
                     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"
                 ],
             });
-            
-            tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-                client_id: googleClientId,
-                scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/drive.file',
-                callback: handleAuthResult,
-            });
 
-            if (localStorage.getItem('googleApiSignedIn') === 'true') {
-                tokenClientRef.current.requestAccessToken({ prompt: 'none' });
-            } else {
+            // OAuth callback 확인 (redirect 후 돌아온 경우)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('code')) {
+                await handleOAuthCallback();
                 setIsGoogleApiLoading(false);
+                return;
+            }
+
+            // 저장된 토큰 확인
+            const tokenData = getStoredTokenData();
+            if (tokenData && tokenData.refresh_token) {
+                // 저장된 토큰으로 gapi 설정
+                try {
+                    const validToken = await ensureValidToken(googleClientId);
+                    window.gapi.client.setToken({ access_token: validToken });
+                    setIsGoogleSignedIn(true);
+                    setGoogleApiError('');
+                } catch (error) {
+                    console.error('Token validation failed:', error);
+                    setIsGoogleSignedIn(false);
+                    setGoogleApiError('토큰이 만료되었습니다. 다시 로그인해주세요.');
+                }
+            } else {
                 setIsGoogleSignedIn(false);
             }
+
+            setIsGoogleApiLoading(false);
+
         } catch (e) {
             console.error("Error initializing Google clients", e);
             setGoogleApiError('Google API 초기화에 실패했습니다.');
@@ -542,59 +580,59 @@ const App: React.FC = () => {
 
     initialize();
 
-  }, [googleApiKey, googleClientId, handleAuthResult]);
+  }, [googleApiKey, googleClientId, handleOAuthCallback]);
 
-  // 토큰 자동 갱신 useEffect
+  // 토큰 자동 갱신 (refresh token 기반)
   useEffect(() => {
-    if (!isGoogleSignedIn || !tokenClientRef.current) return;
+    if (!isGoogleSignedIn || !googleClientId) return;
 
-    const checkAndRefreshToken = () => {
-      const expiresAtStr = localStorage.getItem('googleTokenExpiresAt');
-      if (!expiresAtStr) return;
-
-      const expiresAt = parseInt(expiresAtStr, 10);
-      const now = Date.now();
-      const timeUntilExpiry = expiresAt - now;
-
-      // 토큰이 5분 이내에 만료되면 갱신
-      const REFRESH_THRESHOLD = 5 * 60 * 1000; // 5분
-
-      if (timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0) {
-        console.log('토큰이 곧 만료됩니다. 자동 갱신을 시도합니다.');
-        tokenClientRef.current.requestAccessToken({ prompt: '' });
-      } else if (timeUntilExpiry <= 0) {
-        console.log('토큰이 만료되었습니다. 재인증이 필요합니다.');
-        // 자동으로 재인증 시도 (조용히)
-        tokenClientRef.current.requestAccessToken({ prompt: 'none' });
+    const checkAndRefreshToken = async () => {
+      try {
+        const validToken = await ensureValidToken(googleClientId);
+        if (window.gapi?.client) {
+          window.gapi.client.setToken({ access_token: validToken });
+        }
+      } catch (error) {
+        console.error('Failed to refresh token:', error);
+        setGoogleApiError('토큰 갱신에 실패했습니다. 다시 로그인해주세요.');
+        setIsGoogleSignedIn(false);
       }
     };
 
     // 초기 체크
     checkAndRefreshToken();
 
-    // 1분마다 토큰 상태 확인
-    const intervalId = setInterval(checkAndRefreshToken, 60 * 1000);
+    // 5분마다 토큰 상태 확인 및 갱신
+    const intervalId = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [isGoogleSignedIn]);
+  }, [isGoogleSignedIn, googleClientId]);
 
-  const handleGoogleAuthClick = () => {
-    if (tokenClientRef.current) {
-        tokenClientRef.current.requestAccessToken({ prompt: '' });
+  const handleGoogleAuthClick = async () => {
+    if (!googleClientId) {
+      setGoogleApiError('Google Client ID가 설정되지 않았습니다.');
+      return;
+    }
+
+    try {
+      // OAuth 2.0 Authorization Code Flow + PKCE 시작
+      await initiateOAuthFlow(googleClientId, REDIRECT_URI, SCOPES);
+    } catch (error) {
+      console.error('OAuth flow initiation failed:', error);
+      setGoogleApiError(error instanceof Error ? error.message : 'OAuth 인증 시작 실패');
     }
   };
-  
-  const handleGoogleSignOut = () => {
-    const token = window.gapi.client.getToken();
-    if (token) {
-        window.google.accounts.oauth2.revoke(token.access_token, () => {});
-    }
-    window.gapi.client.setToken(null);
-    setIsGoogleSignedIn(false);
-    localStorage.removeItem('googleApiSignedIn');
-    localStorage.removeItem('googleTokenExpiresAt');
-    if (window.google?.accounts?.id) {
-        window.google.accounts.id.disableAutoSelect();
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await oauthLogout();
+      if (window.gapi?.client) {
+        window.gapi.client.setToken(null);
+      }
+      setIsGoogleSignedIn(false);
+      setGoogleApiError('');
+    } catch (error) {
+      console.error('Sign out failed:', error);
     }
   };
 
@@ -942,6 +980,10 @@ const App: React.FC = () => {
     setError(null);
 
     try {
+        // 토큰 갱신 보장
+        const validToken = await ensureValidToken(googleClientId);
+        window.gapi.client.setToken({ access_token: validToken });
+
         // First, find the folder
         const folderResponse = await window.gapi.client.drive.files.list({
             q: "mimeType='application/vnd.google-apps.folder' and name='5clf' and trashed=false",
